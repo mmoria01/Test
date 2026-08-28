@@ -1,0 +1,327 @@
+---
+title: 'GSB 5544 — Pandas Fundamentals: Asking Questions of a DataFrame'
+jupyter: python3
+---
+
+*Fill in every `____` blank so the cell answers the question in its comment.*
+
+Every section starts with a **question**; the pandas tool is just how we answer it. Remember the question and the code follows.
+
+**Data:** `coffee_purchases.csv` — every coffee purchase from a bank statement (2018–2025). One **row** = one purchase.
+
+| Column | Meaning |
+|---|---|
+| `date` | days since Jan 1, 1970 (we'll fix this!) |
+| `description` | bank-statement text |
+| `amount` | dollars (negative = money out) |
+| `account` | which account paid |
+| `month`, `year`, `day_of_week` | when |
+
+
+```{python}
+import pandas as pd
+coffee = pd.read_csv("https://raw.githubusercontent.com/gato365/gsb5544_instructor_learn_prep/main/assignments/Data/coffee_purchases.csv")
+coffee.head()
+```
+
+---
+## 1. *How big is this data set, and what's in it?*  → `.shape`, `type()`, `.dtypes`
+
+```{python}
+# Q: How many purchases (rows) and variables (columns)?
+coffee.shape
+```
+
+```{python}
+# Q: What kind of object is `coffee`?
+type(coffee)
+```
+
+```{python}
+# Q: What kind of values are in each column?
+coffee.dtypes
+```
+
+| dtype | means |
+|---|---|
+| `int64` / `float64` | numbers |
+| `object` | text |
+| `category` | categorical with fixed levels |
+| `datetime64` | a real date |
+
+`date` is `int64` — pandas *thinks* it's a number. **We know better.**
+
+```{python}
+# .____() = shape + dtypes + non-missing counts in one report
+coffee.info()
+```
+
+---
+## 2. *What kind of variable is each column, really?*
+
+The dtype is how the computer **stores** it. **You** decide what it **means**:
+
+| Type | Definition | Test |
+|---|---|---|
+| **Quantitative** | numbers where arithmetic makes sense | "Is the *average* meaningful?" |
+| **Categorical** | labels / groups (levels) — even if stored as numbers | "Are the values group names?" |
+| **Date / time** | points in time | "Is it a calendar value?" |
+
+| Column | dtype | By definition |
+|---|---|---|
+| `date` | int64 | **date/time** |
+| `description` | object | text |
+| `amount` | float64 | **quantitative** |
+| `account`, `month`, `day_of_week` | object | **categorical** |
+| `year` | int64 | **categorical** (ordered) — the "average year" means nothing |
+
+Now make the DataFrame **state** these types itself.
+
+```{python}
+# Q: How do I make `date` a real date?  (the integers are days since 1970-01-01)
+coffee["date"] = pd.to_datetime(coffee["date"], unit="D")
+coffee["date"].head(3)
+```
+
+```{python}
+# Q: How do I declare a categorical variable?
+coffee["account"] = coffee["account"].astype("category")
+
+# For ORDERED categories, tell pandas the order of the levels
+day_order = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
+coffee["day_of_week"] = pd.Categorical(coffee["day_of_week"], categories=day_order, ordered=True)
+
+coffee.dtypes
+```
+
+```{python}
+# Q: Why bother?  Because counts now come out in the right order.
+coffee["day_of_week"].value_counts().sort_index()
+```
+
+```{python}
+# Q: Does the average of `year` mean anything?  Pandas will compute it anyway — YOU have to know it's meaningless.
+coffee["year"].mean()
+```
+
+✅ **Check:** Is `year` quantitative or categorical? What question would its average (not) answer?
+
+---
+## 3. *Am I holding a table or a single column?*  → DataFrame vs Series
+
+One column name in `[ ]` → **Series** (1-D). A **list** of names in `[[ ]]` → **DataFrame** (2-D).
+
+```{python}
+amt = coffee["amount"]          # Series
+print(type(amt))
+amt.head(3)
+```
+
+```{python}
+amt_df = coffee[["amount"]]     # DataFrame (even with one column) (2 brackets keeps it a df)
+print(type(amt_df))
+amt_df.head(3)
+```
+
+✅ **Check:** predict `type(coffee[["account", "amount"]])`, then run it.
+
+```{python}
+type(coffee[["account", "amount"]])
+```
+
+---
+## 4. *How do I grab columns, rows, or filtered rows?*  → `[ ]`
+
+| You write | You get |
+|---|---|
+| `df["col"]` | one column |
+| `df[["a","b"]]` | several columns |
+| `df[0:5]` | rows 0–4 by position |
+| `df[condition]` | rows where condition is True |
+
+```{python}
+# Q: What was spent and when?
+coffee[["date", "amount"]].____()
+```
+
+```{python}
+# Q: What are the first 5 purchases?   (a slice in [ ] picks ROWS)
+coffee[0:5]
+```
+
+```{python}
+# Q: What were the first 5 amounts?   (column, then rows)
+coffee["amount"][0:5]
+```
+
+```{python}
+# Q: Which purchases were over $10?
+coffee[coffee["amount"] < -10].____()
+```
+
+```{python}
+# Q: Which purchases were on the Joint account on a Friday?   (& = and, | = or; parentheses required)
+coffee[(coffee["account"] == "Joint") & (coffee["day_of_week"] == "Friday")]
+```
+
+✅ **Check:** return `description` and `amount` for every purchase in 2025.
+
+```{python}
+# your answer here
+```
+
+---
+## 5. *By LABEL or by POSITION?*  → `.loc` vs `.iloc`
+
+Both take **`[rows, columns]`**. `:` alone means "everything".
+
+| | selects by | slice end |
+|---|---|---|
+| `.loc` | **label** | **inclusive** |
+| `.iloc` | **i**nteger position | **exclusive** |
+
+```{python}
+# Q: What is the amount of the first purchase?
+print(coffee.____[0, "amount"])    # row label 0, column "amount"
+print(coffee.____[0, 2])          # row position 0, column position 2
+```
+
+```{python}
+# Q: Rows 0-4, date and amount?
+coffee.____[0:4, ["date", "amount"]]     # includes 4
+```
+
+```{python}
+coffee.____[0:4, [0, 2]]               # excludes 4 -> only 4 rows
+```
+
+```{python}
+coffee.____[5, :]                        # one row, all columns -> a Series
+```
+
+```{python}
+coffee.____[:, "amount":"month"].____(3) # a RANGE of columns by label (only .loc)
+```
+
+```{python}
+coffee.____[-3:, :3]                    # last 3 rows, first 3 columns
+```
+
+```{python}
+# Q: How much was spent on the Business account?   (.loc takes a condition for rows too)
+coffee.____[coffee["account"] == "Business", ["date", "amount"]]
+```
+
+```{python}
+# ⚠️ After filtering, labels ≠ positions
+big = coffee[coffee["amount"] < -10]
+print(big.____[0]["amount"])        # first row by POSITION -> works
+try:
+    big.____[0]                      # row LABELED 0 -> was filtered out
+except KeyError:
+    print("KeyError: no row labeled 0")
+```
+
+✅ **Check:** with `.loc`, get `account` and `amount` for rows labeled 10–15. Do it again with `.iloc`. Why does one need `10:16`?
+
+```{python}
+# your answer here
+```
+
+---
+## 6. *How do I tell pandas what a column really is?*  → `.astype()`, `.map()`, `pd.cut()`
+
+```{python}
+# Q: How do I stop pandas doing math on `year`?  -> number to string
+coffee["year"] = coffee["year"].____(____)
+coffee["year"].____(3) + "!"          # string work now, not arithmetic
+```
+
+```{python}
+# Q: What are the levels of a categorical?
+coffee["account"].cat.____
+```
+
+```{python}
+# Q: How do I RENAME levels?
+coffee["account"] = coffee["account"].cat.____({"Eman": "Personal-Eman", "Kelley": "Personal-Kelley"})
+coffee["account"].____()
+```
+
+```{python}
+# Q: How do I RECATEGORIZE (collapse levels)?  .____() with a dictionary: old level -> new level
+account_map = {"Personal-Eman": "Personal",
+               "Personal-Kelley": "Personal",
+               "Joint": "Shared",
+               "Business": "Shared",
+               "Credit Card": "Credit"}
+coffee["account_group"] = coffee["account"].____(account_map).____("____")
+coffee["account_group"].____()
+```
+
+```{python}
+# .____() works for any recode — e.g. weekday vs weekend
+day_map = {"Saturday": "weekend", "Sunday": "weekend"}
+coffee["day_type"] = coffee["day_of_week"].____(day_map).fillna("weekday").____("____")
+coffee["day_type"].____()
+```
+
+```{python}
+# Q: How do I turn a QUANTITATIVE variable into groups?  pd.cut: bin edges + labels
+coffee["spend"] = coffee["amount"].abs()
+coffee["size"] = ____(coffee["spend"], bins=[0, 5, 10, 100], labels=["small", "medium", "large"])
+coffee["size"].____()
+```
+
+```{python}
+# The DataFrame now states every variable's type
+coffee.____
+```
+
+✅ **Check:** use `.map()` to recode `month` into `"Fall"`, `"Winter"`, `"Spring"`, `"Summer"`.
+
+```{python}
+# your answer here
+```
+
+---
+## 7. *How do I build a table without a file?*  → `pd.DataFrame({...})`
+
+A **dictionary of lists**: keys = column names, lists = values.
+
+```{python}
+# Q: What does a home-made coffee cost?
+home = ____({
+    "item":     ["beans", "milk", "filter", "sugar"],
+    "cost":     [0.85, 0.30, 0.05, 0.02],
+    "category": ["ingredient", "ingredient", "supply", "ingredient"],
+})
+home["category"] = home["category"].____("____")
+home
+```
+
+```{python}
+# Everything above works immediately
+print(home.____, home.____.tolist())
+home.____[home["category"] == "ingredient", "cost"].____()
+```
+
+✅ **Check:** build a 4-row DataFrame of coffee shops: `name`, `rating` (quantitative), `has_wifi` (categorical). Declare the category and print `.dtypes`.
+
+```{python}
+# your answer here
+```
+
+---
+## Summary
+
+| Question | Tool |
+|---|---|
+| How big? What's in it? | `.shape`, `type()`, `.dtypes`, `.info()` |
+| What kind of variable, really? | `pd.to_datetime()`, `.astype("category")`, `pd.Categorical(ordered=True)` |
+| Table or column? | `df["col"]` (Series) vs `df[["col"]]` (DataFrame) |
+| Grab columns / rows / filtered rows? | `[ ]` with a name, list, slice, or condition |
+| By label or position? | `.loc[rows, cols]` vs `.iloc[rows, cols]` |
+| Change a column's type / levels? | `.astype(str)`, `.cat.rename_categories`, `.map({...})`, `pd.cut` |
+| Build a table from scratch? | `pd.DataFrame({...})` |
+
